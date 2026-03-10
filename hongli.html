@@ -92,7 +92,7 @@
         }
         #total-val { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.4); } 
 
-        /* ---------- 历史记录面板样式重构 ---------- */
+        /* ---------- 历史记录面板与按钮组 ---------- */
         .history-panel {
             width: 100%;
             max-width: 1300px;
@@ -109,28 +109,32 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding-bottom: 15px;
             margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         .history-header h3 { margin: 0; color: #00d4ff; font-weight: normal; }
-        .btn-save {
-            background: rgba(0, 212, 255, 0.2);
-            border: 1px solid #00d4ff;
-            color: #00d4ff;
-            padding: 8px 18px;
+        
+        .btn-group { display: flex; gap: 10px; }
+        
+        button {
+            padding: 8px 16px;
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
             font-weight: bold;
+            font-size: 13px;
         }
+        
+        .btn-save { background: rgba(0, 212, 255, 0.2); border: 1px solid #00d4ff; color: #00d4ff; }
         .btn-save:hover { background: #00d4ff; color: #000; box-shadow: 0 0 15px rgba(0, 212, 255, 0.5); }
-        .btn-clear {
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.6);
-            padding: 8px 18px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
+        
+        .btn-export { background: rgba(255, 215, 0, 0.15); border: 1px solid #ffd700; color: #ffd700; }
+        .btn-export:hover { background: #ffd700; color: #000; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
+        
+        .btn-import { background: rgba(46, 189, 133, 0.15); border: 1px solid #2ebd85; color: #2ebd85; }
+        .btn-import:hover { background: #2ebd85; color: #000; box-shadow: 0 0 15px rgba(46, 189, 133, 0.5); }
+        
+        .btn-clear { background: transparent; border: 1px solid rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.6); }
         .btn-clear:hover { background: rgba(255, 82, 82, 0.2); color: #ff5252; border-color: #ff5252; }
         
         #history-list {
@@ -138,7 +142,6 @@
             overflow-y: auto;
         }
         
-        /* 历史记录快照卡片 */
         .history-item {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -159,12 +162,7 @@
         .history-time { color: #00d4ff; }
         .history-total { color: #ffd700; letter-spacing: 1px; }
         
-        /* 内部微型表格 */
-        .history-detail-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
+        .history-detail-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .history-detail-table th, .history-detail-table td {
             padding: 6px 10px;
             border: none;
@@ -172,15 +170,10 @@
             text-align: right;
             color: rgba(255, 255, 255, 0.85);
         }
-        .history-detail-table th {
-            color: rgba(255, 255, 255, 0.4);
-            font-weight: normal;
-            background: transparent;
-        }
+        .history-detail-table th { color: rgba(255, 255, 255, 0.4); font-weight: normal; background: transparent; }
         .history-detail-table th:first-child, .history-detail-table td:first-child { text-align: left; }
         .history-detail-table tr:last-child td { border-bottom: none; }
 
-        /* 滚动条美化 */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
@@ -250,9 +243,12 @@
 <div class="history-panel">
     <div class="history-header">
         <h3>📝 调仓快照日志</h3>
-        <div>
-            <button class="btn-save" onclick="saveRecord()">手动打点记录</button>
-            <button class="btn-clear" onclick="clearHistory()">清空记录</button>
+        <div class="btn-group">
+            <button class="btn-save" onclick="saveRecord()">打点记录</button>
+            <button class="btn-export" onclick="exportData()">📤 导出存档</button>
+            <button class="btn-import" onclick="document.getElementById('import-file').click()">📥 导入存档</button>
+            <button class="btn-clear" onclick="clearHistory()">清空</button>
+            <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
         </div>
     </div>
     <div id="history-list">
@@ -339,11 +335,8 @@
         }
     }
 
-    // ----------- 历史记录强化功能 -----------
     function saveRecord() {
-        // 先算一遍，确保抓取的是最新数据
         calculate(); 
-        
         let history = JSON.parse(localStorage.getItem('etf_history') || '[]');
         let currentTotal = parseFloat(document.getElementById('total-val').innerText.replace('¥ ', '').replace(/,/g, ''));
         let details = [];
@@ -359,23 +352,19 @@
         }
 
         let now = new Date();
-        let timeString = now.getFullYear() + '-' + 
-                         String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                         String(now.getDate()).padStart(2, '0') + ' ' + 
-                         String(now.getHours()).padStart(2, '0') + ':' + 
-                         String(now.getMinutes()).padStart(2, '0');
+        let timeString = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
 
         let record = { time: timeString, total: currentTotal, detail: details };
         
         history.unshift(record);
-        if(history.length > 50) history.pop(); // 最多存50条
+        if(history.length > 50) history.pop();
         
         localStorage.setItem('etf_history', JSON.stringify(history));
         renderHistory();
         
         let btn = document.querySelector('.btn-save');
-        btn.innerText = "快照已保存！";
-        setTimeout(() => { btn.innerText = "手动打点记录"; }, 1500);
+        btn.innerText = "已保存";
+        setTimeout(() => { btn.innerText = "打点记录"; }, 1500);
     }
 
     function renderHistory() {
@@ -386,45 +375,18 @@
             listHtml = '<div style="text-align:center; padding: 30px; color:rgba(255,255,255,0.3);">暂无调仓日志。修改上方数据后点击保存，即可生成历史快照。</div>';
         } else {
             history.forEach(item => {
-                // 构建每条记录内部的微型表格
-                let detailTable = `<table class="history-detail-table">
-                                    <tr>
-                                        <th>标的</th>
-                                        <th>结算金额</th>
-                                        <th>实际权重</th>
-                                        <th>权重偏差</th>
-                                        <th>建议调仓金额</th>
-                                    </tr>`;
-                
+                let detailTable = `<table class="history-detail-table"><tr><th>标的</th><th>结算金额</th><th>实际权重</th><th>权重偏差</th><th>建议调仓金额</th></tr>`;
                 item.detail.forEach(d => {
-                    // 兼容旧版纯文本记录（容错处理）
                     if(typeof d === 'string') {
                         detailTable += `<tr><td colspan="5">${d}</td></tr>`;
                     } else {
-                        // 动态颜色处理
                         let devColor = d.dev.includes('-') ? 'buy' : (d.dev === '0.00%' ? 'hold' : 'sell');
                         let actionColor = d.actionVal.includes('-') ? 'sell' : (d.actionVal === '0.00' ? 'hold' : 'buy');
-                        
-                        detailTable += `<tr>
-                                            <td style="color:#fff;">${d.name}</td>
-                                            <td>¥${fm(parseFloat(d.val)||0)}</td>
-                                            <td>${d.weight}</td>
-                                            <td class="${devColor}">${d.dev}</td>
-                                            <td class="${actionColor}">${d.actionVal}</td>
-                                        </tr>`;
+                        detailTable += `<tr><td style="color:#fff;">${d.name}</td><td>¥${fm(parseFloat(d.val)||0)}</td><td>${d.weight}</td><td class="${devColor}">${d.dev}</td><td class="${actionColor}">${d.actionVal}</td></tr>`;
                     }
                 });
                 detailTable += `</table>`;
-
-                listHtml += `
-                    <div class="history-item">
-                        <div class="history-item-header">
-                            <span class="history-time">📅 ${item.time}</span>
-                            <span class="history-total">总资产: ¥ ${fm(item.total)}</span>
-                        </div>
-                        ${detailTable}
-                    </div>
-                `;
+                listHtml += `<div class="history-item"><div class="history-item-header"><span class="history-time">📅 ${item.time}</span><span class="history-total">总资产: ¥ ${fm(item.total)}</span></div>${detailTable}</div>`;
             });
         }
         document.getElementById('history-list').innerHTML = listHtml;
@@ -435,6 +397,63 @@
             localStorage.removeItem('etf_history');
             renderHistory();
         }
+    }
+
+    // ----------- 新增：导出/导入存档功能 -----------
+    function exportData() {
+        calculate(); // 确保数据最新
+        let exportObj = {
+            history: localStorage.getItem('etf_history') || '[]',
+            inputs: {}
+        };
+        
+        for(let i=0; i<NUM_ETFS; i++) {
+            exportObj.inputs[`val-${i}`] = localStorage.getItem(`val-${i}`);
+            exportObj.inputs[`price-${i}`] = localStorage.getItem(`price-${i}`);
+            exportObj.inputs[`lrc-${i}`] = localStorage.getItem(`lrc-${i}`);
+        }
+
+        let dataStr = JSON.stringify(exportObj);
+        let blob = new Blob([dataStr], { type: "application/json" });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        
+        let now = new Date();
+        let dateStr = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+        
+        a.href = url;
+        a.download = `红利再平衡存档_${dateStr}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        let file = event.target.files[0];
+        if (!file) return;
+        
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let data = JSON.parse(e.target.result);
+                
+                if (data.history) {
+                    localStorage.setItem('etf_history', data.history);
+                }
+                if (data.inputs) {
+                    for(let i=0; i<NUM_ETFS; i++) {
+                        if(data.inputs[`val-${i}`] !== undefined) localStorage.setItem(`val-${i}`, data.inputs[`val-${i}`]);
+                        if(data.inputs[`price-${i}`] !== undefined) localStorage.setItem(`price-${i}`, data.inputs[`price-${i}`]);
+                        if(data.inputs[`lrc-${i}`] !== undefined) localStorage.setItem(`lrc-${i}`, data.inputs[`lrc-${i}`]);
+                    }
+                }
+                loadData(); // 重新加载页面数据
+                alert("✅ 存档导入成功！所有资金数据和历史记录已恢复。");
+            } catch (err) {
+                alert("❌ 导入失败：无法识别该文件格式！请确认选择的是正确的 JSON 存档。");
+            }
+            document.getElementById('import-file').value = ''; // 重置文件选择器
+        };
+        reader.readAsText(file);
     }
 
     window.onload = loadData;
