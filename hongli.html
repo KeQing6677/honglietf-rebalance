@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-width=1.0">
+    <title>红利再平衡策略 - 自动调仓系统</title>
+    <style>
+        /* 1. 动态渐变背景 */
+        body { 
+            margin: 0; 
+            min-height: 100vh;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* 2. 核心磨玻璃卡片 */
+        .glass-panel { 
+            width: 100%;
+            max-width: 1300px; 
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px; 
+            padding: 30px; 
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        h1 { text-align: center; color: #ffffff; letter-spacing: 2px; margin-bottom: 5px; }
+        p.desc { text-align: center; color: rgba(255, 255, 255, 0.7); margin-bottom: 30px; font-size: 14px; }
+        
+        /* 3. 表格与边框优化 */
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            padding: 16px 8px; 
+            text-align: center; 
+        }
+        
+        th { 
+            background: rgba(255, 255, 255, 0.1); 
+            color: #fff; 
+            font-weight: 600; 
+            letter-spacing: 1px;
+        }
+        
+        th.input-col { background: rgba(0, 212, 255, 0.15); color: #00d4ff; }
+        td.input-col { background: rgba(255, 255, 255, 0.03); }
+
+        /* 4. 玻璃质感输入框 */
+        input[type="number"] { 
+            width: 90px; 
+            padding: 8px; 
+            background: rgba(255, 255, 255, 0.1); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 8px; 
+            text-align: center; 
+            font-size: 14px; 
+            font-weight: bold; 
+            color: #00d4ff; 
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        input[type="number"]:focus {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+
+        /* 5. 信号颜色 */
+        .buy { color: #00e676; font-weight: bold; text-shadow: 0 0 8px rgba(0, 230, 118, 0.4); } 
+        .sell { color: #ff5252; font-weight: bold; text-shadow: 0 0 8px rgba(255, 82, 82, 0.4); } 
+        .hold { color: rgba(255, 255, 255, 0.5); } 
+
+        .total-row { 
+            font-weight: bold; 
+            background: rgba(255, 255, 255, 0.1); 
+            font-size: 18px; 
+            letter-spacing: 1px;
+        }
+        #total-val { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.4); } 
+
+        /* ---------- 历史记录面板样式重构 ---------- */
+        .history-panel {
+            width: 100%;
+            max-width: 1300px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        .history-header h3 { margin: 0; color: #00d4ff; font-weight: normal; }
+        .btn-save {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        .btn-save:hover { background: #00d4ff; color: #000; box-shadow: 0 0 15px rgba(0, 212, 255, 0.5); }
+        .btn-clear {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.6);
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .btn-clear:hover { background: rgba(255, 82, 82, 0.2); color: #ff5252; border-color: #ff5252; }
+        
+        #history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* 历史记录快照卡片 */
+        .history-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            margin-bottom: 15px;
+            padding: 15px 20px;
+            transition: background 0.2s;
+        }
+        .history-item:hover { background: rgba(255, 255, 255, 0.06); }
+        
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .history-time { color: #00d4ff; }
+        .history-total { color: #ffd700; letter-spacing: 1px; }
+        
+        /* 内部微型表格 */
+        .history-detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .history-detail-table th, .history-detail-table td {
+            padding: 6px 10px;
+            border: none;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+            text-align: right;
+            color: rgba(255, 255, 255, 0.85);
+        }
+        .history-detail-table th {
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: normal;
+            background: transparent;
+        }
+        .history-detail-table th:first-child, .history-detail-table td:first-child { text-align: left; }
+        .history-detail-table tr:last-child td { border-bottom: none; }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+    </style>
+</head>
+<body>
+
+<div class="glass-panel">
+    <h1>💎 红利再平衡策略</h1>
+    <p class="desc">填入【当前持仓金额】、【现价】和【LRC Bias】，系统将实时计算买卖差额。</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>ETF代码</th>
+                <th>名称</th>
+                <th>目标权重</th>
+                <th class="input-col">✍️ 当前持仓金额 (元)</th>
+                <th class="input-col">✍️ 现价</th>
+                <th class="input-col">✍️ LRC Bias%</th>
+                <th>实际权重</th>
+                <th>权重偏差</th>
+                <th>需调仓金额 (¥)</th>
+                <th>折算调仓股数</th>
+                <th>终极操作指令</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>515180</td><td>中证红利</td><td>25%</td>
+                <td class="input-col"><input type="number" id="val-0" oninput="calculate()"></td>
+                <td class="input-col"><input type="number" id="price-0" step="0.001" oninput="calculate()"></td>
+                <td class="input-col"><input type="number" id="lrc-0" step="0.1" oninput="calculate()"></td>
+                <td id="weight-0">0.00%</td><td id="dev-0">0.00%</td><td id="action-val-0">0.00</td><td id="action-shares-0">0</td><td id="signal-0">⚪ 躺平收息</td>
+            </tr>
+            <tr>
+                <td>513530</td><td>港股通红利</td><td>25%</td>
+                <td class="input-col"><input type="number" id="val-1" oninput="calculate()"></td>
+                <td class="input-col"><input type="number" id="price-1" step="0.001" oninput="calculate()"></td>
+                <td class="input-col"><input type="number" id="lrc-1" step="0.1" oninput="calculate()"></td>
+                <td id="weight-1">0.00%</td><td id="dev-1">0.00%</td><td id="action-val-1">0.00</td><td id="action-shares-1">0</td><td id="signal-1">⚪ 躺平收息</td>
+            </tr>
+            <tr>
+                <td>561560</td><td>电力ETF</td><td>25%</td>
+                <td class="input-col"><input type="number" id="val-2" oninput="calculate()"></td>
+                <td class="input-col"><input type="number" id="price-2" step="0.001" oninput="calculate()"></td>
+                <td class="input-col"><input type="number" id="lrc-2" step="0.1" oninput="calculate()"></td>
+                <td id="weight-2">0.00%</td><td id="dev-2">0.00%</td><td id="action-val-2">0.00</td><td id="action-shares-2">0</td><td id="signal-2">⚪ 躺平收息</td>
+            </tr>
+            <tr>
+                <td>515450</td><td>大盘红利</td><td>25%</td>
+                <td class="input-col"><input type="number" id="val-3" oninput="calculate()"></td>
+                <td class="input-col"><input type="number" id="price-3" step="0.001" oninput="calculate()"></td>
+                <td class="input-col"><input type="number" id="lrc-3" step="0.1" oninput="calculate()"></td>
+                <td id="weight-3">0.00%</td><td id="dev-3">0.00%</td><td id="action-val-3">0.00</td><td id="action-shares-3">0</td><td id="signal-3">⚪ 躺平收息</td>
+            </tr>
+            
+            <tr class="total-row">
+                <td colspan="3" style="text-align: right;">总资产核算：</td>
+                <td id="total-val" colspan="8" style="text-align: left; padding-left: 20px;">¥ 0.00</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="history-panel">
+    <div class="history-header">
+        <h3>📝 调仓快照日志</h3>
+        <div>
+            <button class="btn-save" onclick="saveRecord()">手动打点记录</button>
+            <button class="btn-clear" onclick="clearHistory()">清空记录</button>
+        </div>
+    </div>
+    <div id="history-list">
+        </div>
+</div>
+
+<script>
+    const NUM_ETFS = 4;
+    const TARGET_WEIGHT = 0.25;
+    const ETF_NAMES = ['中证红利', '港股通红利', '电力ETF', '大盘红利'];
+
+    function fm(num) { return num.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+    function loadData() {
+        for(let i=0; i<NUM_ETFS; i++) {
+            let savedVal = localStorage.getItem(`val-${i}`);
+            let savedPrice = localStorage.getItem(`price-${i}`);
+            let savedLrc = localStorage.getItem(`lrc-${i}`);
+            
+            document.getElementById(`val-${i}`).value = savedVal !== null ? savedVal : 25000;
+            document.getElementById(`price-${i}`).value = savedPrice !== null ? savedPrice : (i===0?1.5:(i===1?0.9:(i===2?1.3:1.4)));
+            document.getElementById(`lrc-${i}`).value = savedLrc !== null ? savedLrc : 0;
+        }
+        renderHistory();
+        calculate();
+    }
+
+    function calculate() {
+        let values = [], prices = [], lrcs = [], totalValue = 0;
+
+        for(let i=0; i<NUM_ETFS; i++) {
+            let vStr = document.getElementById(`val-${i}`).value;
+            let pStr = document.getElementById(`price-${i}`).value;
+            let lStr = document.getElementById(`lrc-${i}`).value;
+
+            localStorage.setItem(`val-${i}`, vStr);
+            localStorage.setItem(`price-${i}`, pStr);
+            localStorage.setItem(`lrc-${i}`, lStr);
+
+            let v = parseFloat(vStr) || 0;
+            let p = parseFloat(pStr) || 0;
+            let l = parseFloat(lStr) || 0;
+            
+            values.push(v); prices.push(p); lrcs.push(l);
+            totalValue += v;
+        }
+
+        document.getElementById('total-val').innerText = "¥ " + fm(totalValue);
+        if(totalValue === 0) return;
+        let targetValue = totalValue * TARGET_WEIGHT;
+
+        for(let i=0; i<NUM_ETFS; i++) {
+            let currentWeight = values[i] / totalValue;
+            let dev = currentWeight - TARGET_WEIGHT;
+            
+            document.getElementById(`weight-${i}`).innerText = (currentWeight * 100).toFixed(2) + '%';
+            
+            let devCell = document.getElementById(`dev-${i}`);
+            devCell.innerText = (dev > 0 ? '+' : '') + (dev * 100).toFixed(2) + '%';
+            devCell.className = dev > 0.05 ? 'sell' : (dev < -0.05 ? 'buy' : '');
+
+            let actionValue = targetValue - values[i];
+            let valCell = document.getElementById(`action-val-${i}`);
+            valCell.innerText = actionValue > 0 ? "+¥" + actionValue.toFixed(2) : (actionValue < 0 ? "-¥" + Math.abs(actionValue).toFixed(2) : "0.00");
+            valCell.className = actionValue > 0 ? 'buy' : (actionValue < 0 ? 'sell' : 'hold');
+
+            let actionShares = 0;
+            if (prices[i] > 0) { actionShares = Math.round(actionValue / prices[i] / 100) * 100; }
+            let sharesCell = document.getElementById(`action-shares-${i}`);
+            sharesCell.innerText = actionShares > 0 ? "+" + actionShares : actionShares;
+            sharesCell.className = actionShares > 0 ? 'buy' : (actionShares < 0 ? 'sell' : 'hold');
+
+            let signalCell = document.getElementById(`signal-${i}`);
+            if (dev >= 0.05 || lrcs[i] >= 10) {
+                signalCell.innerHTML = "🔴 强卖 (高估或超标)";
+                signalCell.className = 'sell';
+            } else if (dev <= -0.05 || lrcs[i] <= -8) {
+                signalCell.innerHTML = "🟢 强买 (低估或不足)";
+                signalCell.className = 'buy';
+            } else {
+                signalCell.innerHTML = "⚪ 躺平收息";
+                signalCell.className = 'hold';
+            }
+        }
+    }
+
+    // ----------- 历史记录强化功能 -----------
+    function saveRecord() {
+        // 先算一遍，确保抓取的是最新数据
+        calculate(); 
+        
+        let history = JSON.parse(localStorage.getItem('etf_history') || '[]');
+        let currentTotal = parseFloat(document.getElementById('total-val').innerText.replace('¥ ', '').replace(/,/g, ''));
+        let details = [];
+
+        for(let i=0; i<NUM_ETFS; i++) {
+            details.push({
+                name: ETF_NAMES[i],
+                val: document.getElementById(`val-${i}`).value,
+                weight: document.getElementById(`weight-${i}`).innerText,
+                dev: document.getElementById(`dev-${i}`).innerText,
+                actionVal: document.getElementById(`action-val-${i}`).innerText
+            });
+        }
+
+        let now = new Date();
+        let timeString = now.getFullYear() + '-' + 
+                         String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                         String(now.getDate()).padStart(2, '0') + ' ' + 
+                         String(now.getHours()).padStart(2, '0') + ':' + 
+                         String(now.getMinutes()).padStart(2, '0');
+
+        let record = { time: timeString, total: currentTotal, detail: details };
+        
+        history.unshift(record);
+        if(history.length > 50) history.pop(); // 最多存50条
+        
+        localStorage.setItem('etf_history', JSON.stringify(history));
+        renderHistory();
+        
+        let btn = document.querySelector('.btn-save');
+        btn.innerText = "快照已保存！";
+        setTimeout(() => { btn.innerText = "手动打点记录"; }, 1500);
+    }
+
+    function renderHistory() {
+        let history = JSON.parse(localStorage.getItem('etf_history') || '[]');
+        let listHtml = '';
+        
+        if(history.length === 0) {
+            listHtml = '<div style="text-align:center; padding: 30px; color:rgba(255,255,255,0.3);">暂无调仓日志。修改上方数据后点击保存，即可生成历史快照。</div>';
+        } else {
+            history.forEach(item => {
+                // 构建每条记录内部的微型表格
+                let detailTable = `<table class="history-detail-table">
+                                    <tr>
+                                        <th>标的</th>
+                                        <th>结算金额</th>
+                                        <th>实际权重</th>
+                                        <th>权重偏差</th>
+                                        <th>建议调仓金额</th>
+                                    </tr>`;
+                
+                item.detail.forEach(d => {
+                    // 兼容旧版纯文本记录（容错处理）
+                    if(typeof d === 'string') {
+                        detailTable += `<tr><td colspan="5">${d}</td></tr>`;
+                    } else {
+                        // 动态颜色处理
+                        let devColor = d.dev.includes('-') ? 'buy' : (d.dev === '0.00%' ? 'hold' : 'sell');
+                        let actionColor = d.actionVal.includes('-') ? 'sell' : (d.actionVal === '0.00' ? 'hold' : 'buy');
+                        
+                        detailTable += `<tr>
+                                            <td style="color:#fff;">${d.name}</td>
+                                            <td>¥${fm(parseFloat(d.val)||0)}</td>
+                                            <td>${d.weight}</td>
+                                            <td class="${devColor}">${d.dev}</td>
+                                            <td class="${actionColor}">${d.actionVal}</td>
+                                        </tr>`;
+                    }
+                });
+                detailTable += `</table>`;
+
+                listHtml += `
+                    <div class="history-item">
+                        <div class="history-item-header">
+                            <span class="history-time">📅 ${item.time}</span>
+                            <span class="history-total">总资产: ¥ ${fm(item.total)}</span>
+                        </div>
+                        ${detailTable}
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('history-list').innerHTML = listHtml;
+    }
+
+    function clearHistory() {
+        if(confirm("确定要清空所有操作日志吗？此操作无法恢复。")) {
+            localStorage.removeItem('etf_history');
+            renderHistory();
+        }
+    }
+
+    window.onload = loadData;
+</script>
+
+</body>
+</html>
