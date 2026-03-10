@@ -5,194 +5,107 @@
     <meta name="viewport" content="width=device-width, initial-width=1.0">
     <title>红利再平衡策略 - 自动调仓系统</title>
     <style>
-        /* 1. 动态渐变背景 */
-        body { 
-            margin: 0; 
-            min-height: 100vh;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-            color: #fff; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        /* 2. 核心磨玻璃卡片 */
-        .glass-panel { 
-            width: 100%;
-            max-width: 1300px; 
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 20px; 
-            padding: 30px; 
-            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
-            margin-bottom: 20px;
-        }
-
+        body { margin: 0; min-height: 100vh; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; box-sizing: border-box; }
+        
+        /* 主面板 */
+        .glass-panel { width: 100%; max-width: 1300px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 30px; box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3); margin-bottom: 20px; }
         h1 { text-align: center; color: #ffffff; letter-spacing: 2px; margin-bottom: 5px; }
         p.desc { text-align: center; color: rgba(255, 255, 255, 0.7); margin-bottom: 30px; font-size: 14px; }
         
-        /* 3. 表格与边框优化 */
+        /* 表格样式 */
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th, td { 
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-            padding: 16px 8px; 
-            text-align: center; 
-        }
-        
-        th { 
-            background: rgba(255, 255, 255, 0.1); 
-            color: #fff; 
-            font-weight: 600; 
-            letter-spacing: 1px;
-        }
-        
+        th, td { border: 1px solid rgba(255, 255, 255, 0.1); padding: 16px 8px; text-align: center; }
+        th { background: rgba(255, 255, 255, 0.1); color: #fff; font-weight: 600; letter-spacing: 1px; }
         th.input-col { background: rgba(0, 212, 255, 0.15); color: #00d4ff; }
         td.input-col { background: rgba(255, 255, 255, 0.03); }
-
-        /* 4. 玻璃质感输入框 */
-        input[type="number"] { 
-            width: 90px; 
-            padding: 8px; 
-            background: rgba(255, 255, 255, 0.1); 
-            border: 1px solid rgba(255, 255, 255, 0.2); 
-            border-radius: 8px; 
-            text-align: center; 
-            font-size: 14px; 
-            font-weight: bold; 
-            color: #00d4ff; 
-            outline: none;
-            transition: all 0.3s ease;
-        }
-        input[type="number"]:focus {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: #00d4ff;
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
-        }
-
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none; margin: 0;
-        }
-
-        /* 5. 信号颜色 */
+        .cash-row td { background: rgba(0, 212, 255, 0.08); font-weight: 500; }
+        
+        /* 输入框 */
+        input[type="number"] { width: 90px; padding: 8px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; text-align: center; font-size: 14px; font-weight: bold; color: #00d4ff; outline: none; transition: all 0.3s ease; }
+        input[type="number"]:focus { background: rgba(255, 255, 255, 0.2); border-color: #00d4ff; box-shadow: 0 0 10px rgba(0, 212, 255, 0.4); }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* 颜色类 */
         .buy { color: #00e676; font-weight: bold; text-shadow: 0 0 8px rgba(0, 230, 118, 0.4); } 
         .sell { color: #ff5252; font-weight: bold; text-shadow: 0 0 8px rgba(255, 82, 82, 0.4); } 
-        .hold { color: rgba(255, 255, 255, 0.5); } 
-
-        .total-row { 
-            font-weight: bold; 
-            background: rgba(255, 255, 255, 0.1); 
-            font-size: 18px; 
-            letter-spacing: 1px;
-        }
+        .hold { color: rgba(255, 255, 255, 0.6); } 
+        .total-row { font-weight: bold; background: rgba(255, 255, 255, 0.1); font-size: 18px; letter-spacing: 1px; }
         #total-val { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.4); } 
 
-        /* ---------- 历史记录面板与按钮组 ---------- */
-        .history-panel {
+        /* ---------- 规则说明面板 ---------- */
+        .rules-panel {
             width: 100%;
             max-width: 1300px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
             border-radius: 12px;
-            padding: 20px;
+            padding: 18px 25px;
+            margin-bottom: 20px;
             box-sizing: border-box;
-        }
-        .history-header {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 13.5px;
+            line-height: 1.6;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 15px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 10px;
         }
+        .rules-panel h4 { margin: 0; color: #00d4ff; font-size: 15px; font-weight: 600; letter-spacing: 1px; }
+        .rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .rule-col ul { margin: 5px 0 0 0; padding-left: 20px; }
+        .rule-col li { margin-bottom: 6px; }
+        .hl-sell { color: #ff5252; font-weight: bold; }
+        .hl-buy { color: #00e676; font-weight: bold; }
+        .hl-warn { color: #ffd700; font-weight: bold; }
+
+        /* ---------- 历史记录面板与按钮组 ---------- */
+        .history-panel { width: 100%; max-width: 1300px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; box-sizing: border-box; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 15px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         .history-header h3 { margin: 0; color: #00d4ff; font-weight: normal; }
-        
         .btn-group { display: flex; gap: 10px; }
-        
-        button {
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: bold;
-            font-size: 13px;
-        }
-        
+        button { padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-weight: bold; font-size: 13px; }
         .btn-save { background: rgba(0, 212, 255, 0.2); border: 1px solid #00d4ff; color: #00d4ff; }
         .btn-save:hover { background: #00d4ff; color: #000; box-shadow: 0 0 15px rgba(0, 212, 255, 0.5); }
-        
         .btn-export { background: rgba(255, 215, 0, 0.15); border: 1px solid #ffd700; color: #ffd700; }
         .btn-export:hover { background: #ffd700; color: #000; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
-        
         .btn-import { background: rgba(46, 189, 133, 0.15); border: 1px solid #2ebd85; color: #2ebd85; }
         .btn-import:hover { background: #2ebd85; color: #000; box-shadow: 0 0 15px rgba(46, 189, 133, 0.5); }
-        
         .btn-clear { background: transparent; border: 1px solid rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.6); }
         .btn-clear:hover { background: rgba(255, 82, 82, 0.2); color: #ff5252; border-color: #ff5252; }
-        
-        #history-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .history-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            margin-bottom: 15px;
-            padding: 15px 20px;
-            transition: background 0.2s;
-        }
+        #history-list { max-height: 400px; overflow-y: auto; }
+        .history-item { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; margin-bottom: 15px; padding: 15px 20px; transition: background 0.2s; }
         .history-item:hover { background: rgba(255, 255, 255, 0.06); }
-        
-        .history-item-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            font-size: 15px;
-            font-weight: bold;
-        }
+        .history-item-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 15px; font-weight: bold; }
         .history-time { color: #00d4ff; }
         .history-total { color: #ffd700; letter-spacing: 1px; }
-        
         .history-detail-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .history-detail-table th, .history-detail-table td {
-            padding: 6px 10px;
-            border: none;
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
-            text-align: right;
-            color: rgba(255, 255, 255, 0.85);
-        }
+        .history-detail-table th, .history-detail-table td { padding: 6px 10px; border: none; border-bottom: 1px dashed rgba(255, 255, 255, 0.1); text-align: right; color: rgba(255, 255, 255, 0.85); }
         .history-detail-table th { color: rgba(255, 255, 255, 0.4); font-weight: normal; background: transparent; }
         .history-detail-table th:first-child, .history-detail-table td:first-child { text-align: left; }
         .history-detail-table tr:last-child td { border-bottom: none; }
-
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .rules-grid { grid-template-columns: 1fr; gap: 10px; }
+        }
     </style>
 </head>
 <body>
 
 <div class="glass-panel">
-    <h1>💎 红利再平衡策略</h1>
-    <p class="desc">填入【当前持仓金额】、【现价】和【LRC Bias】，系统将实时计算买卖差额。</p>
+    <h1>💎 红利再平衡策略 (实盘熔断版)</h1>
+    <p class="desc">填入【当前金额】、【现价】和【LRC Bias】，系统将实时计算并给出调仓指令。</p>
     
     <table>
         <thead>
             <tr>
-                <th>ETF代码</th>
+                <th>资产代码</th>
                 <th>名称</th>
                 <th>目标权重</th>
-                <th class="input-col">✍️ 当前持仓金额 (元)</th>
+                <th class="input-col">✍️ 当前金额 (元)</th>
                 <th class="input-col">✍️ 现价</th>
                 <th class="input-col">✍️ LRC Bias%</th>
                 <th>实际权重</th>
@@ -232,6 +145,20 @@
                 <td id="weight-3">0.00%</td><td id="dev-3">0.00%</td><td id="action-val-3">0.00</td><td id="action-shares-3">0</td><td id="signal-3">⚪ 躺平收息</td>
             </tr>
             
+            <tr class="cash-row">
+                <td>💰</td>
+                <td style="color: #00d4ff;">现金/货基</td>
+                <td>(蓄水池)</td>
+                <td class="input-col"><input type="number" id="val-cash" value="0" oninput="calculate()"></td>
+                <td>1.000</td>
+                <td>--</td>
+                <td id="weight-cash">0.00%</td>
+                <td>--</td>
+                <td id="action-val-cash" style="font-weight:bold;">0.00</td>
+                <td>--</td>
+                <td id="signal-cash" style="color:#00d4ff; font-weight:bold;">📦 调仓后余存: ¥0.00</td>
+            </tr>
+
             <tr class="total-row">
                 <td colspan="3" style="text-align: right;">总资产核算：</td>
                 <td id="total-val" colspan="8" style="text-align: left; padding-left: 20px;">¥ 0.00</td>
@@ -240,6 +167,26 @@
     </table>
 </div>
 
+<div class="rules-panel">
+    <h4>⚙️ 系统运行逻辑与熔断规则</h4>
+    <div class="rules-grid">
+        <div class="rule-col">
+            <b>1. 第一优先级：LRC 动能极值 (一票否决权)</b>
+            <ul>
+                <li>LRC <b>≥ 10%</b>：短线严重过热。<span class="hl-sell">强制卖出止盈</span>，无视仓位是否达标，并<span class="hl-warn">禁止任何补仓</span>。</li>
+                <li>LRC <b>≤ -8%</b>：极度恐慌冰点。<span class="hl-buy">强制抄底买入</span>，无视仓位比例，并<span class="hl-warn">禁止低位割肉</span>。</li>
+            </ul>
+        </div>
+        <div class="rule-col">
+            <b>2. 第二优先级：权重金额偏差 (网格平移)</b>
+            <ul>
+                <li>当实际仓位偏离 25% 的目标超过 <b>±5%</b> 时触发。</li>
+                <li>超标需卖出：若此时 LRC ≤ -5%，触发保护，<span class="hl-warn">暂停卖出 (防深坑割肉)</span>。</li>
+                <li>不足需补仓：若此时 LRC ≥ 7%，触发保护，<span class="hl-warn">暂停补仓 (防高位接盘)</span>。</li>
+            </ul>
+        </div>
+    </div>
+</div>
 <div class="history-panel">
     <div class="history-header">
         <h3>📝 调仓快照日志</h3>
@@ -251,8 +198,7 @@
             <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
         </div>
     </div>
-    <div id="history-list">
-        </div>
+    <div id="history-list"></div>
 </div>
 
 <script>
@@ -267,11 +213,13 @@
             let savedVal = localStorage.getItem(`val-${i}`);
             let savedPrice = localStorage.getItem(`price-${i}`);
             let savedLrc = localStorage.getItem(`lrc-${i}`);
-            
             document.getElementById(`val-${i}`).value = savedVal !== null ? savedVal : 25000;
             document.getElementById(`price-${i}`).value = savedPrice !== null ? savedPrice : (i===0?1.5:(i===1?0.9:(i===2?1.3:1.4)));
             document.getElementById(`lrc-${i}`).value = savedLrc !== null ? savedLrc : 0;
         }
+        let savedCash = localStorage.getItem('val-cash');
+        document.getElementById('val-cash').value = savedCash !== null ? savedCash : 0;
+        
         renderHistory();
         calculate();
     }
@@ -296,165 +244,108 @@
             totalValue += v;
         }
 
+        let cashStr = document.getElementById('val-cash').value;
+        localStorage.setItem('val-cash', cashStr);
+        let cashVal = parseFloat(cashStr) || 0;
+        totalValue += cashVal; 
+
         document.getElementById('total-val').innerText = "¥ " + fm(totalValue);
-        if(totalValue === 0) return;
-        let targetValue = totalValue * TARGET_WEIGHT;
-
-        for(let i=0; i<NUM_ETFS; i++) {
-            let currentWeight = values[i] / totalValue;
-            let dev = currentWeight - TARGET_WEIGHT;
-            
-            document.getElementById(`weight-${i}`).innerText = (currentWeight * 100).toFixed(2) + '%';
-            
-            let devCell = document.getElementById(`dev-${i}`);
-            devCell.innerText = (dev > 0 ? '+' : '') + (dev * 100).toFixed(2) + '%';
-            devCell.className = dev > 0.05 ? 'sell' : (dev < -0.05 ? 'buy' : '');
-
-            let actionValue = targetValue - values[i];
-            let valCell = document.getElementById(`action-val-${i}`);
-            valCell.innerText = actionValue > 0 ? "+¥" + actionValue.toFixed(2) : (actionValue < 0 ? "-¥" + Math.abs(actionValue).toFixed(2) : "0.00");
-            valCell.className = actionValue > 0 ? 'buy' : (actionValue < 0 ? 'sell' : 'hold');
-
-            let actionShares = 0;
-            if (prices[i] > 0) { actionShares = Math.round(actionValue / prices[i] / 100) * 100; }
-            let sharesCell = document.getElementById(`action-shares-${i}`);
-            sharesCell.innerText = actionShares > 0 ? "+" + actionShares : actionShares;
-            sharesCell.className = actionShares > 0 ? 'buy' : (actionShares < 0 ? 'sell' : 'hold');
-
-            let signalCell = document.getElementById(`signal-${i}`);
-            if (dev >= 0.05 || lrcs[i] >= 10) {
-                signalCell.innerHTML = "🔴 强卖 (高估或超标)";
-                signalCell.className = 'sell';
-            } else if (dev <= -0.05 || lrcs[i] <= -8) {
-                signalCell.innerHTML = "🟢 强买 (低估或不足)";
-                signalCell.className = 'buy';
-            } else {
-                signalCell.innerHTML = "⚪ 躺平收息";
-                signalCell.className = 'hold';
-            }
-        }
-    }
-
-    function saveRecord() {
-        calculate(); 
-        let history = JSON.parse(localStorage.getItem('etf_history') || '[]');
-        let currentTotal = parseFloat(document.getElementById('total-val').innerText.replace('¥ ', '').replace(/,/g, ''));
-        let details = [];
-
-        for(let i=0; i<NUM_ETFS; i++) {
-            details.push({
-                name: ETF_NAMES[i],
-                val: document.getElementById(`val-${i}`).value,
-                weight: document.getElementById(`weight-${i}`).innerText,
-                dev: document.getElementById(`dev-${i}`).innerText,
-                actionVal: document.getElementById(`action-val-${i}`).innerText
-            });
-        }
-
-        let now = new Date();
-        let timeString = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-
-        let record = { time: timeString, total: currentTotal, detail: details };
         
-        history.unshift(record);
-        if(history.length > 50) history.pop();
-        
-        localStorage.setItem('etf_history', JSON.stringify(history));
-        renderHistory();
-        
-        let btn = document.querySelector('.btn-save');
-        btn.innerText = "已保存";
-        setTimeout(() => { btn.innerText = "打点记录"; }, 1500);
-    }
+        let netCashFlow = 0; 
 
-    function renderHistory() {
-        let history = JSON.parse(localStorage.getItem('etf_history') || '[]');
-        let listHtml = '';
-        
-        if(history.length === 0) {
-            listHtml = '<div style="text-align:center; padding: 30px; color:rgba(255,255,255,0.3);">暂无调仓日志。修改上方数据后点击保存，即可生成历史快照。</div>';
-        } else {
-            history.forEach(item => {
-                let detailTable = `<table class="history-detail-table"><tr><th>标的</th><th>结算金额</th><th>实际权重</th><th>权重偏差</th><th>建议调仓金额</th></tr>`;
-                item.detail.forEach(d => {
-                    if(typeof d === 'string') {
-                        detailTable += `<tr><td colspan="5">${d}</td></tr>`;
-                    } else {
-                        let devColor = d.dev.includes('-') ? 'buy' : (d.dev === '0.00%' ? 'hold' : 'sell');
-                        let actionColor = d.actionVal.includes('-') ? 'sell' : (d.actionVal === '0.00' ? 'hold' : 'buy');
-                        detailTable += `<tr><td style="color:#fff;">${d.name}</td><td>¥${fm(parseFloat(d.val)||0)}</td><td>${d.weight}</td><td class="${devColor}">${d.dev}</td><td class="${actionColor}">${d.actionVal}</td></tr>`;
-                    }
-                });
-                detailTable += `</table>`;
-                listHtml += `<div class="history-item"><div class="history-item-header"><span class="history-time">📅 ${item.time}</span><span class="history-total">总资产: ¥ ${fm(item.total)}</span></div>${detailTable}</div>`;
-            });
-        }
-        document.getElementById('history-list').innerHTML = listHtml;
-    }
+        if(totalValue > 0) {
+            let targetValue = totalValue * TARGET_WEIGHT;
 
-    function clearHistory() {
-        if(confirm("确定要清空所有操作日志吗？此操作无法恢复。")) {
-            localStorage.removeItem('etf_history');
-            renderHistory();
-        }
-    }
-
-    // ----------- 新增：导出/导入存档功能 -----------
-    function exportData() {
-        calculate(); // 确保数据最新
-        let exportObj = {
-            history: localStorage.getItem('etf_history') || '[]',
-            inputs: {}
-        };
-        
-        for(let i=0; i<NUM_ETFS; i++) {
-            exportObj.inputs[`val-${i}`] = localStorage.getItem(`val-${i}`);
-            exportObj.inputs[`price-${i}`] = localStorage.getItem(`price-${i}`);
-            exportObj.inputs[`lrc-${i}`] = localStorage.getItem(`lrc-${i}`);
-        }
-
-        let dataStr = JSON.stringify(exportObj);
-        let blob = new Blob([dataStr], { type: "application/json" });
-        let url = URL.createObjectURL(blob);
-        let a = document.createElement('a');
-        
-        let now = new Date();
-        let dateStr = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
-        
-        a.href = url;
-        a.download = `红利再平衡存档_${dateStr}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    function importData(event) {
-        let file = event.target.files[0];
-        if (!file) return;
-        
-        let reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                let data = JSON.parse(e.target.result);
+            for(let i=0; i<NUM_ETFS; i++) {
+                let currentWeight = values[i] / totalValue;
+                let dev = currentWeight - TARGET_WEIGHT;
+                let lrcVal = lrcs[i];
                 
-                if (data.history) {
-                    localStorage.setItem('etf_history', data.history);
+                document.getElementById(`weight-${i}`).innerText = (currentWeight * 100).toFixed(2) + '%';
+                
+                let devCell = document.getElementById(`dev-${i}`);
+                devCell.innerText = (dev > 0 ? '+' : '') + (dev * 100).toFixed(2) + '%';
+                devCell.className = dev > 0.05 ? 'sell' : (dev < -0.05 ? 'buy' : '');
+
+                let rawActionValue = targetValue - values[i]; 
+                let finalActionValue = rawActionValue;
+                let signalText = ""; let signalClass = "";
+                
+                if (lrcVal >= 10) {
+                    if (finalActionValue > 0) finalActionValue = 0; 
+                    if (values[i] > 0 && finalActionValue === 0) finalActionValue = -values[i] * 0.1; 
+                    signalText = "🔴 强卖 (LRC极高避险)"; signalClass = "sell";
+                } else if (lrcVal <= -8) {
+                    if (finalActionValue < 0) finalActionValue = 0; 
+                    signalText = "🟢 强买 (LRC极低抄底)"; signalClass = "buy";
+                } else if (dev >= 0.05) {
+                    if (lrcVal <= -5) { finalActionValue = 0; signalText = "⏳ 暂停卖出 (等反弹)"; signalClass = "hold";
+                    } else { signalText = "🔴 卖出 (仓位超标)"; signalClass = "sell"; }
+                } else if (dev <= -0.05) {
+                    if (lrcVal >= 7) { finalActionValue = 0; signalText = "⏳ 暂停补仓 (等回落)"; signalClass = "hold";
+                    } else { signalText = "🟢 买入 (仓位不足)"; signalClass = "buy"; }
+                } else {
+                    finalActionValue = 0; signalText = "⚪ 躺平收息"; signalClass = "hold";
                 }
-                if (data.inputs) {
-                    for(let i=0; i<NUM_ETFS; i++) {
-                        if(data.inputs[`val-${i}`] !== undefined) localStorage.setItem(`val-${i}`, data.inputs[`val-${i}`]);
-                        if(data.inputs[`price-${i}`] !== undefined) localStorage.setItem(`price-${i}`, data.inputs[`price-${i}`]);
-                        if(data.inputs[`lrc-${i}`] !== undefined) localStorage.setItem(`lrc-${i}`, data.inputs[`lrc-${i}`]);
-                    }
-                }
-                loadData(); // 重新加载页面数据
-                alert("✅ 存档导入成功！所有资金数据和历史记录已恢复。");
-            } catch (err) {
-                alert("❌ 导入失败：无法识别该文件格式！请确认选择的是正确的 JSON 存档。");
+
+                netCashFlow -= finalActionValue; 
+
+                let valCell = document.getElementById(`action-val-${i}`);
+                valCell.innerText = finalActionValue > 0 ? "+¥" + finalActionValue.toFixed(2) : (finalActionValue < 0 ? "-¥" + Math.abs(finalActionValue).toFixed(2) : "0.00");
+                valCell.className = finalActionValue > 0 ? 'buy' : (finalActionValue < 0 ? 'sell' : 'hold');
+
+                let actionShares = 0;
+                if (prices[i] > 0) { actionShares = Math.round(finalActionValue / prices[i] / 100) * 100; }
+                let sharesCell = document.getElementById(`action-shares-${i}`);
+                sharesCell.innerText = actionShares > 0 ? "+" + actionShares : actionShares;
+                sharesCell.className = actionShares > 0 ? 'buy' : (actionShares < 0 ? 'sell' : 'hold');
+
+                let sigCell = document.getElementById(`signal-${i}`);
+                sigCell.innerHTML = signalText; sigCell.className = signalClass;
             }
-            document.getElementById('import-file').value = ''; // 重置文件选择器
-        };
-        reader.readAsText(file);
+        }
+
+        document.getElementById('weight-cash').innerText = totalValue > 0 ? (cashVal / totalValue * 100).toFixed(2) + '%' : '0.00%';
+        
+        let cashCell = document.getElementById('action-val-cash');
+        cashCell.innerText = netCashFlow > 0 ? "+¥" + netCashFlow.toFixed(2) : (netCashFlow < 0 ? "-¥" + Math.abs(netCashFlow).toFixed(2) : "0.00");
+        cashCell.className = netCashFlow > 0 ? 'buy' : (netCashFlow < 0 ? 'sell' : 'hold');
+
+        let expectedCash = cashVal + netCashFlow;
+        document.getElementById('signal-cash').innerHTML = `📦 调仓后余存: ¥${expectedCash.toFixed(2)}`;
+        if (expectedCash < 0) {
+            document.getElementById('signal-cash').innerHTML = `⚠️ 资金缺口: -¥${Math.abs(expectedCash).toFixed(2)} (需充值或多卖)`;
+            document.getElementById('signal-cash').style.color = '#ff5252';
+        } else {
+            document.getElementById('signal-cash').style.color = '#00d4ff';
+        }
     }
+
+    function saveRecord() { 
+        calculate(); 
+        let h = JSON.parse(localStorage.getItem('etf_history') || '[]'); 
+        let ct = parseFloat(document.getElementById('total-val').innerText.replace('¥ ', '').replace(/,/g, '')); 
+        let d = []; 
+        for(let i=0; i<NUM_ETFS; i++) { 
+            d.push({ name: ETF_NAMES[i], val: document.getElementById(`val-${i}`).value, weight: document.getElementById(`weight-${i}`).innerText, dev: document.getElementById(`dev-${i}`).innerText, actionVal: document.getElementById(`action-val-${i}`).innerText }); 
+        } 
+        d.push({ name: "💰 现金/货基", val: document.getElementById('val-cash').value, weight: document.getElementById('weight-cash').innerText, dev: "--", actionVal: document.getElementById('action-val-cash').innerText });
+        
+        let n = new Date(); let ts = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0') + ' ' + String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0'); 
+        h.unshift({ time: ts, total: ct, detail: d }); 
+        if(h.length > 50) h.pop(); 
+        localStorage.setItem('etf_history', JSON.stringify(h)); 
+        renderHistory(); 
+        let b = document.querySelector('.btn-save'); b.innerText = "已保存"; setTimeout(() => { b.innerText = "打点记录"; }, 1500); 
+    }
+
+    function renderHistory() { let h = JSON.parse(localStorage.getItem('etf_history') || '[]'); let l = ''; if(h.length === 0) { l = '<div style="text-align:center; padding: 30px; color:rgba(255,255,255,0.3);">暂无调仓日志。修改上方数据后点击保存，即可生成历史快照。</div>'; } else { h.forEach(i => { let t = `<table class="history-detail-table"><tr><th>标的</th><th>结算金额</th><th>实际权重</th><th>权重偏差</th><th>资金流向/建议</th></tr>`; i.detail.forEach(d => { if(typeof d === 'string') { t += `<tr><td colspan="5">${d}</td></tr>`; } else { let dc = d.dev.includes('-') ? 'buy' : (d.dev === '0.00%' ? 'hold' : 'sell'); let ac = d.actionVal.includes('-') ? 'sell' : (d.actionVal === '0.00' ? 'hold' : 'buy'); t += `<tr><td style="color:#fff;">${d.name}</td><td>¥${fm(parseFloat(d.val)||0)}</td><td>${d.weight}</td><td class="${dc}">${d.dev}</td><td class="${ac}">${d.actionVal}</td></tr>`; } }); t += `</table>`; l += `<div class="history-item"><div class="history-item-header"><span class="history-time">📅 ${i.time}</span><span class="history-total">总资产: ¥ ${fm(i.total)}</span></div>${t}</div>`; }); } document.getElementById('history-list').innerHTML = l; }
+    
+    function clearHistory() { if(confirm("确定要清空所有操作日志吗？此操作无法恢复。")) { localStorage.removeItem('etf_history'); renderHistory(); } }
+    
+    function exportData() { calculate(); let o = { history: localStorage.getItem('etf_history') || '[]', inputs: {} }; for(let i=0; i<NUM_ETFS; i++) { o.inputs[`val-${i}`] = localStorage.getItem(`val-${i}`); o.inputs[`price-${i}`] = localStorage.getItem(`price-${i}`); o.inputs[`lrc-${i}`] = localStorage.getItem(`lrc-${i}`); } o.inputs['val-cash'] = localStorage.getItem('val-cash'); let b = new Blob([JSON.stringify(o)], { type: "application/json" }); let u = URL.createObjectURL(b); let a = document.createElement('a'); let n = new Date(); let ds = n.getFullYear() + String(n.getMonth()+1).padStart(2,'0') + String(n.getDate()).padStart(2,'0'); a.href = u; a.download = `红利再平衡存档_${ds}.json`; a.click(); URL.revokeObjectURL(u); }
+    
+    function importData(e) { let f = e.target.files[0]; if (!f) return; let r = new FileReader(); r.onload = function(e) { try { let d = JSON.parse(e.target.result); if (d.history) { localStorage.setItem('etf_history', d.history); } if (d.inputs) { for(let i=0; i<NUM_ETFS; i++) { if(d.inputs[`val-${i}`] !== undefined) localStorage.setItem(`val-${i}`, d.inputs[`val-${i}`]); if(d.inputs[`price-${i}`] !== undefined) localStorage.setItem(`price-${i}`, d.inputs[`price-${i}`]); if(d.inputs[`lrc-${i}`] !== undefined) localStorage.setItem(`lrc-${i}`, d.inputs[`lrc-${i}`]); } if (d.inputs['val-cash'] !== undefined) localStorage.setItem('val-cash', d.inputs['val-cash']); } loadData(); alert("✅ 存档导入成功！"); } catch (err) { alert("❌ 导入失败格式错误！"); } document.getElementById('import-file').value = ''; }; r.readAsText(f); }
 
     window.onload = loadData;
 </script>
